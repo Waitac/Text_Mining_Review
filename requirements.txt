@@ -1,0 +1,28 @@
+# Manipulação de dados
+pandas==2.2.2
+numpy==1.26.4
+
+# Visualização
+matplotlib==3.9.2
+seaborn==0.13.2
+
+# Pré-processamento de texto
+nltk==3.9.1
+spacy==3.7.5
+# Modelo de linguagem para português
+pt_core_news_sm @ https://github.com/explosion/spacy-models/releases/download/pt_core_news_sm-3.7.0/pt_core_news_sm-3.7.0-py3-none-any.whl
+
+# Machine Learning clássico (comparação opcional)
+scikit-learn==1.5.2
+imbalanced-learn==0.12.3
+
+# Deep Learning + Transformers (CPU)
+torch==2.4.1
+transformers==4.44.2
+datasets==3.0.2
+accelerate==0.34.2
+
+# Utilitários
+tqdm==4.66.5
+joblib==1.4.2
+scikit-plot==0.3.7

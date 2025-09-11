@@ -1,0 +1,7 @@
+# Ambientes virtuais
+.venv/
+venv/
+
+# Arquivos de ambiente
+.env
+.env.*
