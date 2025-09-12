@@ -102,6 +102,12 @@ Imprime classification_report
 
 Salva a matriz de confusão em reports/confusion_matrix.png.
 
+
+Deploy
+
+o deploy será feito com flask, no terminal rode o comando:
+python app.py
+
 🧠 Mapeamento de rótulos
 
 1–2 → 0 (NEGATIVO)
