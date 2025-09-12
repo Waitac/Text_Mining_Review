@@ -1,7 +1,59 @@
-# Ambientes virtuais
+Ambientes virtuais
 .venv/
 venv/
+ENV/
+env/
 
-# Arquivos de ambiente
+Configurações e variáveis de ambiente
 .env
 .env.*
+*.env
+
+Cache e bytecode Python
+pycache/
+*.py[cod]
+*$py.class
+
+Logs e relatórios
+logs/
+.log
+reports/logs/
+reports/.csv
+
+Dados locais
+data/processed/
+data//*.tmp
+data//*.cache
+
+Modelos e checkpoints
+models/
+!models/.gitkeep
+
+Arquivos temporários/lock
+*.pid
+*.seed
+*.lock
+
+Notebooks e checkpoints (se usar)
+.ipynb_checkpoints/
+
+IDEs e editores
+.vscode/
+.idea/
+*.iml
+
+Sistemas operacionais
+.DS_Store
+Thumbs.db
+
+Build/dist Python (por via das dúvidas)
+build/
+dist/
+*.egg-info/
+.eggs/
+
+Cache de ferramentas
+.cache/
+.pytest_cache/
+huggingface/
+~$*

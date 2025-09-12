@@ -1,34 +1,71 @@
 """
-Módulo de pré-processamento de texto em português
-- Limpeza de caracteres
-- Stopwords
-- Lematização (spaCy)
+Pré-processamento mínimo e seguro para Transformers (BERTimbau)
+- Mantém acentos, caixa e pontuação
+- Remove apenas ruídos óbvios (HTML/URLs/espacos)
+- Oferece utilitários opcionais para análise (não usados no input do modelo)
 """
 
+from __future__ import annotations
 import re
-import spacy
-import nltk
+from typing import Iterable, List, Optional
 
-# Baixar stopwords PT-BR do NLTK (apenas na primeira vez)
-nltk.download("stopwords")
-stopwords = set(nltk.corpus.stopwords.words("portuguese"))
+# ----------------------------- Limpeza mínima --------------------------------
+_URL_RE = re.compile(r"https?://\S+|www\.\S+", flags=re.IGNORECASE)
+_HTML_RE = re.compile(r"<[^>]+>")
+_WS_RE = re.compile(r"\s+")
 
-# Carregar modelo spaCy para PT-BR
-nlp = spacy.load("pt_core_news_sm")
 
-def clean_text(text):
-    """Remove caracteres especiais, links e coloca em minúsculas"""
-    text = text.lower()
-    text = re.sub(r"http\S+", "", text)   # remove links
-    text = re.sub(r"[^a-zà-ú ]", "", text) # mantém apenas letras
-    return text.strip()
+def clean_minimal(text: str) -> str:
+    """
+    Limpeza leve recomendada para BERT:
+    - remove HTML simples
+    - remove URLs
+    - normaliza espaços
+    NÃO: força minúsculas, remove pontuação, acentos ou stopwords.
+    """
+    if text is None:
+        return ""
+    if not isinstance(text, str):
+        text = str(text)
+    text = _HTML_RE.sub(" ", text)
+    text = _URL_RE.sub(" ", text)
+    text = _WS_RE.sub(" ", text).strip()
+    return text
 
-def preprocess_text(text):
-    """Aplica limpeza, remove stopwords e lematiza"""
-    text = clean_text(text)
-    doc = nlp(text)
-    tokens = [
-        token.lemma_ for token in doc 
-        if token.lemma_ not in stopwords and not token.is_punct
-    ]
-    return " ".join(tokens)
+
+def preprocess_text(text: str) -> str:
+    """
+    Função principal usada no dataset:
+    - aplica apenas a limpeza mínima acima.
+    Adequado para tokenizers cased (ex.: BERTimbau).
+    """
+    return clean_minimal(text)
+
+
+# ------------------------- Utilidades opcionais -------------------------------
+# As funções abaixo são opcionais para análise exploratória/relatórios.
+# NÃO usar o resultado delas como entrada do modelo BERT sem validação explícita.
+
+def normalize_for_reports(
+    text: str,
+    lower: bool = True,
+    keep_punct: bool = True,
+) -> str:
+    """
+    Normalização leve para relatórios: útil para contagens de termos/wordclouds.
+    Não recomendada como input do BERT.
+    """
+    t = clean_minimal(text)
+    if lower:
+        t = t.lower()
+    if not keep_punct:
+        t = re.sub(r"[^\w\sÀ-ÖØ-öø-ÿ]", " ", t, flags=re.UNICODE)
+    t = _WS_RE.sub(" ", t).strip()
+    return t
+
+
+def simple_tokenize(text: str) -> List[str]:
+    """
+    Tokenização simplista para análises (não para o modelo).
+    """
+    return normalize_for_reports(text).split()
