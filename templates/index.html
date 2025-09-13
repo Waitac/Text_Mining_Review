@@ -18,7 +18,7 @@
     <h1>Classificador de Sentimento (BERTimbau)</h1>
     <form method="post" action="/predict">
       <label for="text">Digite o texto da review:</label>
-      <textarea id="text" name="text" placeholder="Ex.: Entrega rápida e produto excelente!">{{ text or "" }}</textarea>
+      <textarea id="text" name="text" placeholder="Ex.: Entrega rápida e produto excelente!">{{ text or '' }}</textarea>
       <div style="margin-top:.5rem">
         <button type="submit">Classificar</button>
       </div>

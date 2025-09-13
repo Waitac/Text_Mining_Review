@@ -108,7 +108,7 @@ def main():
         metric_for_best_model="f1_macro",
         greater_is_better=True,
         learning_rate=2e-5,
-        per_device_train_batch_size=8,
+        per_device_train_batch_size=16,
         per_device_eval_batch_size=16,
         num_train_epochs=3,
         weight_decay=0.01,
@@ -119,7 +119,7 @@ def main():
         save_total_limit=2,  # mantém melhor e último
         seed=42,
         report_to=["none"],  # altere para ["tensorboard"] se desejar
-        fp16=False,
+        fp16=True,
         dataloader_num_workers=4,
         dataloader_pin_memory=False,
     )
