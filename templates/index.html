@@ -3,37 +3,118 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Classificador de Sentimento (PT-BR)</title>
-  <style>
-    body { font-family: system-ui, Arial, sans-serif; margin: 2rem; }
-    .container { max-width: 720px; margin: auto; }
-    textarea { width: 100%; height: 160px; font-size: 1rem; padding: .75rem; }
-    button { padding: .6rem 1rem; font-size: 1rem; cursor: pointer; }
-    .result { margin-top: 1rem; padding: 1rem; border: 1px solid #ddd; border-radius: .5rem; }
-    .err { color: #b00020; }
-  </style>
+  <title>Classificador de Sentimento - Reviews</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/index.css') }}">
 </head>
 <body>
   <div class="container">
-    <h1>Classificador de Sentimento (BERTimbau)</h1>
-    <form method="post" action="/predict">
-      <label for="text">Digite o texto da review:</label>
-      <textarea id="text" name="text" placeholder="Ex.: Entrega rápida e produto excelente!">{{ text or '' }}</textarea>
-      <div style="margin-top:.5rem">
-        <button type="submit">Classificar</button>
+    <header>
+      <h1>Classificador de Sentimento</h1>
+      <a href="/dashboard" class="btn-dashboard">📊 Dashboard</a>
+    </header>
+
+    <form method="post" action="/predict" id="reviewForm">
+      <div class="form-group">
+        <label for="brand">Marca: <span class="required">*</span></label>
+        <select id="brand" name="brand" required>
+          <option value="">Selecione uma marca</option>
+          {% for b in brands %}
+          <option value="{{ b }}" {% if selected_brand == b %}selected{% endif %}>{{ b }}</option>
+          {% endfor %}
+        </select>
       </div>
+
+      <div class="form-group">
+        <label for="product">Nome do Produto: <span class="required">*</span></label>
+        <select id="product" name="product" required disabled>
+          <option value="">Primeiro selecione uma marca</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="text">Escreva sua avaliação: <span class="required">*</span></label>
+        <textarea id="text" name="text" placeholder="Ex.: Produto excelente, chegou rápido!" required>{{ text or '' }}</textarea>
+      </div>
+
+      <button type="submit" class="btn-submit">Classificar e Salvar</button>
     </form>
 
     {% if error %}
-      <p class="err">{{ error }}</p>
+      <div class="message error">{{ error }}</div>
+    {% endif %}
+
+    {% if success %}
+      <div class="message success">{{ success }}</div>
     {% endif %}
 
     {% if label %}
       <div class="result">
-        <p><strong>Classe:</strong> {{ label }}</p>
+        <h3>Resultado da Classificação</h3>
+        <p><strong>Produto:</strong> {{ selected_product }}</p>
+        <p><strong>Marca:</strong> {{ selected_brand }}</p>
+        <p><strong>Sentimento:</strong> <span class="sentiment-{{ label|lower }}">{{ label }}</span></p>
         <p><strong>Confiança:</strong> {{ score }}</p>
       </div>
     {% endif %}
   </div>
+
+  <script>
+    const brandSelect = document.getElementById('brand');
+    const productSelect = document.getElementById('product');
+    
+    // Armazenar produto selecionado anteriormente (se houver)
+    const selectedProduct = "{{ selected_product or '' }}";
+    
+    // Event listener para mudança de marca
+    brandSelect.addEventListener('change', async function() {
+      const brand = this.value;
+      
+      // Limpar e desabilitar select de produto
+      productSelect.innerHTML = '<option value="">Carregando...</option>';
+      productSelect.disabled = true;
+      
+      if (!brand) {
+        productSelect.innerHTML = '<option value="">Primeiro selecione uma marca</option>';
+        return;
+      }
+      
+      try {
+        // Buscar produtos da marca selecionada
+        const response = await fetch(`/api/products/${encodeURIComponent(brand)}`);
+        const data = await response.json();
+        
+        // Limpar options
+        productSelect.innerHTML = '<option value="">Selecione um produto</option>';
+        
+        // Adicionar produtos
+        if (data.products && data.products.length > 0) {
+          data.products.forEach(product => {
+            const option = document.createElement('option');
+            option.value = product;
+            option.textContent = product;
+            productSelect.appendChild(option);
+          });
+          productSelect.disabled = false;
+        } else {
+          productSelect.innerHTML = '<option value="">Nenhum produto encontrado</option>';
+        }
+      } catch (error) {
+        console.error('Erro ao carregar produtos:', error);
+        productSelect.innerHTML = '<option value="">Erro ao carregar produtos</option>';
+      }
+    });
+    
+    // Se houver marca selecionada (após submit), carregar produtos automaticamente
+    if (brandSelect.value) {
+      brandSelect.dispatchEvent(new Event('change'));
+      
+      // Após carregar produtos, selecionar o produto anterior
+      if (selectedProduct) {
+        setTimeout(() => {
+          productSelect.value = selectedProduct;
+        }, 500);
+      }
+    }
+  </script>
 </body>
 </html>

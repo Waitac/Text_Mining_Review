@@ -24,6 +24,7 @@ Dados locais
 data/processed/
 data//*.tmp
 data//*.cache
+backup/
 
 Modelos e checkpoints
 models/

@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dashboard - Análise de Sentimentos</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Dashboard de Análise de Sentimentos</h1>
+      <a href="/" class="btn-back">← Voltar</a>
+    </header>
+
+    <div class="charts-grid">
+      <div class="chart-card">
+        <h3>Distribuição de Sentimentos</h3>
+        <div id="sentimentChart" class="chart"></div>
+      </div>
+
+      <div class="chart-card">
+        <h3>Distribuição de Confiança das Predições</h3>
+        <div id="confidenceChart" class="chart"></div>
+      </div>
+
+      <div class="chart-card full-width">
+        <h3>Sentimento por Marca (Top 10)</h3>
+        <div id="brandSentimentChart" class="chart"></div>
+      </div>
+
+      <div class="chart-card full-width">
+        <h3>Palavras-chave Mais Frequentes por Sentimento</h3>
+        <div id="keywordsChart" class="chart"></div>
+      </div>
+
+      <div class="chart-card full-width">
+        <h3>Evolução Temporal dos Sentimentos</h3>
+        <div id="timelineChart" class="chart"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    fetch('/api/dashboard-data')
+      .then(response => response.json())
+      .then(data => {
+        initCharts(data);
+      })
+      .catch(error => console.error('Erro ao carregar dados:', error));
+
+    function initCharts(data) {
+      const darkBg = '#370617';
+      const textColor = '#ffffff';
+      const gridColor = 'rgba(255,255,255,0.1)';
+      
+      // Paleta de cores vibrantes
+      const sentimentColors = {
+        'NEGATIVO': '#ff4757',
+        'NEUTRO': '#ffa502',
+        'POSITIVO': '#2ed573'
+      };
+
+      // 1. Gráfico de Pizza - Sentimentos
+      const sentimentChart = echarts.init(document.getElementById('sentimentChart'));
+      const sentimentOption = {
+        backgroundColor: darkBg,
+        tooltip: {
+          trigger: 'item',
+          backgroundColor: 'rgba(0,0,0,0.8)',
+          borderColor: '#faa307',
+          textStyle: { color: textColor }
+        },
+        legend: {
+          orient: 'vertical',
+          left: 'left',
+          textStyle: { color: textColor, fontSize: 14 }
+        },
+        series: [{
+          type: 'pie',
+          radius: ['40%', '70%'],
+          center: ['60%', '50%'],
+          data: data.sentiment_counts.map(item => ({
+            value: item.count,
+            name: item.sentiment_label,
+            itemStyle: { color: sentimentColors[item.sentiment_label] }
+          })),
+          label: {
+            color: textColor,
+            fontSize: 14,
+            fontWeight: 'bold'
+          },
+          emphasis: {
+            itemStyle: {
+              shadowBlur: 15,
+              shadowOffsetX: 0,
+              shadowColor: 'rgba(255, 255, 255, 0.3)'
+            }
+          }
+        }]
+      };
+      sentimentChart.setOption(sentimentOption);
+
+      // 2. Distribuição de Confiança
+      const confidenceChart = echarts.init(document.getElementById('confidenceChart'));
+      
+      const buckets = [0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
+      const confSeries = [];
+      
+      Object.keys(sentimentColors).forEach(sentiment => {
+        const bucketData = data.confidence_buckets[sentiment] || {};
+        const seriesData = buckets.map(b => bucketData[b] || 0);
+        
+        confSeries.push({
+          name: sentiment,
+          type: 'bar',
+          stack: 'total',
+          data: seriesData,
+          itemStyle: { color: sentimentColors[sentiment] },
+          label: {
+            show: false
+          }
+        });
+      });
+      
+      const confidenceOption = {
+        backgroundColor: darkBg,
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: { type: 'shadow' },
+          backgroundColor: 'rgba(0,0,0,0.8)',
+          borderColor: '#faa307',
+          textStyle: { color: textColor }
+        },
+        legend: {
+          data: Object.keys(sentimentColors),
+          textStyle: { color: textColor, fontSize: 14 },
+          top: 10
+        },
+        grid: {
+          left: '3%',
+          right: '4%',
+          bottom: '3%',
+          containLabel: true,
+          borderColor: gridColor
+        },
+        xAxis: {
+          type: 'category',
+          data: buckets.map(b => `${(b*100).toFixed(0)}%`),
+          axisLabel: { color: textColor },
+          axisLine: { lineStyle: { color: gridColor } }
+        },
+        yAxis: {
+          type: 'value',
+          axisLabel: { color: textColor },
+          axisLine: { lineStyle: { color: gridColor } },
+          splitLine: { lineStyle: { color: gridColor } }
+        },
+        series: confSeries
+      };
+      confidenceChart.setOption(confidenceOption);
+
+      // 3. Sentimento por Marca (Stacked Bar)
+      const brandSentimentChart = echarts.init(document.getElementById('brandSentimentChart'));
+      
+      const brands = data.brand_sentiment.map(item => item[0]);
+      const negData = data.brand_sentiment.map(item => item[1]['NEGATIVO'] || 0);
+      const neuData = data.brand_sentiment.map(item => item[1]['NEUTRO'] || 0);
+      const posData = data.brand_sentiment.map(item => item[1]['POSITIVO'] || 0);
+      
+      const brandSentimentOption = {
+        backgroundColor: darkBg,
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: { type: 'shadow' },
+          backgroundColor: 'rgba(0,0,0,0.8)',
+          borderColor: '#faa307',
+          textStyle: { color: textColor }
+        },
+        legend: {
+          data: ['NEGATIVO', 'NEUTRO', 'POSITIVO'],
+          textStyle: { color: textColor, fontSize: 14 },
+          top: 10
+        },
+        grid: {
+          left: '3%',
+          right: '4%',
+          bottom: '3%',
+          containLabel: true
+        },
+        xAxis: {
+          type: 'value',
+          axisLabel: { color: textColor },
+          axisLine: { lineStyle: { color: gridColor } },
+          splitLine: { lineStyle: { color: gridColor } }
+        },
+        yAxis: {
+          type: 'category',
+          data: brands,
+          axisLabel: { color: textColor, fontSize: 12 },
+          axisLine: { lineStyle: { color: gridColor } }
+        },
+        series: [
+          {
+            name: 'NEGATIVO',
+            type: 'bar',
+            stack: 'total',
+            data: negData,
+            itemStyle: { color: sentimentColors['NEGATIVO'] }
+          },
+          {
+            name: 'NEUTRO',
+            type: 'bar',
+            stack: 'total',
+            data: neuData,
+            itemStyle: { color: sentimentColors['NEUTRO'] }
+          },
+          {
+            name: 'POSITIVO',
+            type: 'bar',
+            stack: 'total',
+            data: posData,
+            itemStyle: { color: sentimentColors['POSITIVO'] }
+          }
+        ]
+      };
+      brandSentimentChart.setOption(brandSentimentOption);
+
+      // 4. Palavras-chave (Tabs)
+      const keywordsChart = echarts.init(document.getElementById('keywordsChart'));
+      
+      // Começar com NEGATIVO
+      let currentSentiment = 'NEGATIVO';
+      
+      function updateKeywordsChart(sentiment) {
+        const keywords = data.top_keywords[sentiment] || [];
+        const words = keywords.map(item => item[0]);
+        const counts = keywords.map(item => item[1]);
+        
+        const keywordsOption = {
+          backgroundColor: darkBg,
+          title: {
+            text: `Palavras em reviews ${sentiment}`,
+            textStyle: { color: textColor, fontSize: 16 },
+            left: 'center',
+            top: 10
+          },
+          tooltip: {
+            trigger: 'axis',
+            axisPointer: { type: 'shadow' },
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            borderColor: '#faa307',
+            textStyle: { color: textColor }
+          },
+          grid: {
+            left: '3%',
+            right: '4%',
+            bottom: '3%',
+            top: 60,
+            containLabel: true
+          },
+          xAxis: {
+            type: 'value',
+            axisLabel: { color: textColor },
+            axisLine: { lineStyle: { color: gridColor } },
+            splitLine: { lineStyle: { color: gridColor } }
+          },
+          yAxis: {
+            type: 'category',
+            data: words.reverse(),
+            axisLabel: { color: textColor, fontSize: 12 },
+            axisLine: { lineStyle: { color: gridColor } }
+          },
+          series: [{
+            type: 'bar',
+            data: counts.reverse(),
+            itemStyle: { 
+              color: sentimentColors[sentiment],
+              borderRadius: [0, 5, 5, 0]
+            },
+            label: {
+              show: true,
+              position: 'right',
+              color: textColor,
+              fontSize: 11
+            }
+          }]
+        };
+        
+        keywordsChart.setOption(keywordsOption, true);
+      }
+      
+      updateKeywordsChart(currentSentiment);
+      
+      // Permitir clique para alternar entre sentimentos
+      keywordsChart.on('click', function() {
+        const sentiments = ['NEGATIVO', 'NEUTRO', 'POSITIVO'];
+        const currentIndex = sentiments.indexOf(currentSentiment);
+        currentSentiment = sentiments[(currentIndex + 1) % 3];
+        updateKeywordsChart(currentSentiment);
+      });
+
+      // 5. Timeline (Área empilhada)
+      const timelineChart = echarts.init(document.getElementById('timelineChart'));
+      
+      const dates = Object.keys(data.timeline).sort();
+      const timelineNeg = dates.map(d => data.timeline[d]['NEGATIVO'] || 0);
+      const timelineNeu = dates.map(d => data.timeline[d]['NEUTRO'] || 0);
+      const timelinePos = dates.map(d => data.timeline[d]['POSITIVO'] || 0);
+      
+      const timelineOption = {
+        backgroundColor: darkBg,
+        tooltip: {
+          trigger: 'axis',
+          axisPointer: { type: 'cross' },
+          backgroundColor: 'rgba(0,0,0,0.8)',
+          borderColor: '#faa307',
+          textStyle: { color: textColor }
+        },
+        legend: {
+          data: ['NEGATIVO', 'NEUTRO', 'POSITIVO'],
+          textStyle: { color: textColor, fontSize: 14 },
+          top: 10
+        },
+        grid: {
+          left: '3%',
+          right: '4%',
+          bottom: '3%',
+          containLabel: true
+        },
+        xAxis: {
+          type: 'category',
+          boundaryGap: false,
+          data: dates,
+          axisLabel: { color: textColor, rotate: 45 },
+          axisLine: { lineStyle: { color: gridColor } }
+        },
+        yAxis: {
+          type: 'value',
+          axisLabel: { color: textColor },
+          axisLine: { lineStyle: { color: gridColor } },
+          splitLine: { lineStyle: { color: gridColor } }
+        },
+        series: [
+          {
+            name: 'NEGATIVO',
+            type: 'line',
+            stack: 'total',
+            areaStyle: { opacity: 0.8 },
+            data: timelineNeg,
+            itemStyle: { color: sentimentColors['NEGATIVO'] },
+            smooth: true
+          },
+          {
+            name: 'NEUTRO',
+            type: 'line',
+            stack: 'total',
+            areaStyle: { opacity: 0.8 },
+            data: timelineNeu,
+            itemStyle: { color: sentimentColors['NEUTRO'] },
+            smooth: true
+          },
+          {
+            name: 'POSITIVO',
+            type: 'line',
+            stack: 'total',
+            areaStyle: { opacity: 0.8 },
+            data: timelinePos,
+            itemStyle: { color: sentimentColors['POSITIVO'] },
+            smooth: true
+          }
+        ]
+      };
+      timelineChart.setOption(timelineOption);
+
+      // Responsividade
+      window.addEventListener('resize', () => {
+        sentimentChart.resize();
+        confidenceChart.resize();
+        brandSentimentChart.resize();
+        keywordsChart.resize();
+        timelineChart.resize();
+      });
+    }
+  </script>
+</body>
+</html>
